@@ -28,7 +28,7 @@ int mystrfind(char *origin, char *substr){
 			}
 		}
 		if(isFound && j==s2)
-			return 1;
+			return i;
 	}
-    return 0;
+    return -1;
 }

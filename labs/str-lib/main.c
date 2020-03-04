@@ -10,7 +10,15 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 	printf("Initial Lenght: %d\n", mystrlen(argv[1]));
-	printf("New String: %s\n", mystradd(argv[1],argv[2]));
-	printf("Substring was found: %s\n", mystrfind(argv[2],argv[3]) ? "Yes" : "No");
-    return 0;
+	char *newStr = mystradd(argv[1],argv[2]);
+	printf("New String: %s\n", newStr);
+	int found = mystrfind(newStr,argv[3]);
+	printf("Substring was found: ");
+	if(found<0){
+		printf("No\n");
+	}
+	else{
+		printf("Yes, at pos %d\n", found);
+	}
+	return 0;
 }
