@@ -1,3 +1,8 @@
+Solution: Running Code 
+----------------------
+The makefile has been updated to run the testLogger.c file succesfully, simply run:
+- `make runTest`
+
 Lab - Logger Library
 ====================
 
