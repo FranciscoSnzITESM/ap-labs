@@ -100,15 +100,15 @@ static const unsigned char d[] = {
     66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,66,
     66,66,66,66,66,66
 };
+
 int base64decode (char *in, size_t inLen, unsigned char *out, size_t *outLen) { 
     char *end = in + inLen;
     char iter = 0;
     uint32_t buf = 0;
     size_t len = 0;
-    
     while (in < end) {
         // Tracking progress
-        percentage = (int)in * 100 / (int)end;
+        percentage = len * 100 / *outLen;
         unsigned char c = d[*in++];
         
         switch (c) {
@@ -154,13 +154,11 @@ void handle_sigint(int sig) {
         infof("Reading file\n");
         break;
     case 1:
-        char action[9];
         if (encode_decode) {
-            strcpy(action, "Encoding");
+            infof("Decoding %d%%\n", percentage);
         } else {
-            strcpy(action, "Decoding");
+            infof("Encoding %d%%\n", percentage);
         }
-        infof("%s, %d%%\n", action, percentage);
         break;
     case 2:
         infof("Writing file\n");
@@ -182,9 +180,10 @@ char *readFile(char fileName[], size_t *finalSize){
     char *buffer = calloc(max, sizeof(char));
     int n;
     while((n = fread(buffer + curr, sizeof(char), max, file)) == max){
-        buffer = realloc(buffer, curr + max);
         curr += max;
+        buffer = realloc(buffer, curr + max);
     }
+    fclose(file);
     curr += n;
     *finalSize = curr;
     return buffer;
@@ -197,6 +196,7 @@ void writeFile(char newFileName[], char buffer[], size_t size){
         return;
     }
     fwrite(buffer, sizeof(char), size, file);
+    fclose(file);
 }
 
 int main(int argc, char *argv[]){
@@ -206,6 +206,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     progress = 0;
+    percentage = 0;
     signal(SIGINT, handle_sigint);
     signal(SIGUSR1, handle_sigint);
     if(strcmp(argv[1], "--encode") == 0){ // Encode
