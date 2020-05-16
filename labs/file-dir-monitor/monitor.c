@@ -15,7 +15,7 @@ struct directory{
 int currDirs;
 struct directory **directories;
 
-struct directory *getPwd(struct inotify_event *event){
+char *getPwd(const struct inotify_event *event){
     int i;
     for(i = 0; i < currDirs; i++){
         if(directories[i]->wd == event->wd){
@@ -31,7 +31,7 @@ struct directory *getPwd(struct inotify_event *event){
 }
 
 int addDirNotify(const char *path){
-    int mask = IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO;
+    int mask = IN_CREATE | IN_DELETE;
     int wd = inotify_add_watch(fd, path, mask);
     if(wd == -1){
         errorf("Error adding %s to inotify\n", path);
@@ -40,7 +40,7 @@ int addDirNotify(const char *path){
     directories[currDirs] = malloc(sizeof(struct directory));
     directories[currDirs]->wd = wd;
     directories[currDirs]->path = calloc(strlen(path), sizeof(char));
-    strcpy(directories[currDirs], path);
+    strcpy(directories[currDirs]->path, path);
     currDirs++;
     return 0;
 }
@@ -49,14 +49,12 @@ int isDirectory(char *path){
     struct stat buf;
     stat(path, &buf);
     switch (buf.st_mode & S_IFMT) {
-    case S_IFBLK:  infof("Block device");            break;
-    case S_IFCHR:  infof("Character device");        break;
     case S_IFDIR:  infof("Directory");               return 1;
     case S_IFIFO:  infof("FIFO/pipe");               break;
     case S_IFLNK:  infof("Symlink");                 break;
     case S_IFREG:  infof("Regular file");            break;
     case S_IFSOCK: infof("Socket");                  break;
-    default:       infof("Unknown?");                break;
+    default:       infof("Unknown type");            break;
     }
     return 0;
 }
@@ -77,28 +75,27 @@ static int treeEntry(const char *fpath, const struct stat *sb, int typeflag, str
 }
 
 void manageEvent(const struct inotify_event *event){
-    if(event->mask == IN_CREATE){
+    if(event->mask & IN_CREATE){
         char *path = getPwd(event);
         int isDir = isDirectory(path);
-        infof(" created.\n");
+        infof(" %s created\n", path);
         if(isDir){
             addDirNotify(path);
         }
         free(path);
     }
-    else if(event->mask == IN_DELETE){
+    else if(event->mask & IN_DELETE){
         char *path = getPwd(event);
-        isDirectory(path);
-        infof(" deleted.\n");
+        infof("%s deleted\n", path);
     }
-    else if(event->mask == IN_MOVED_FROM){
+    else if(event->mask & IN_MOVED_FROM){
 
     }
-    else if(event->mask == IN_MOVED_TO){
+    else if(event->mask & IN_MOVED_TO){
 
     }
     else {
-        warnf("Unknown event\n");
+        warnf("Unknown event %x\n", event->mask);
     }
 }
 
