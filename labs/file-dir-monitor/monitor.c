@@ -14,7 +14,15 @@ struct directory{
 };
 int currDirs;
 struct directory **directories;
-
+char *getPwdNoFile(const struct inotify_event *event){
+    int i;
+    for(i = 0; i < currDirs; i++){
+        if(directories[i]->wd == event->wd){
+            return directories[i]->path;
+        }
+    }
+    return NULL;
+}
 char *getPwd(const struct inotify_event *event){
     int i;
     for(i = 0; i < currDirs; i++){
@@ -29,13 +37,26 @@ char *getPwd(const struct inotify_event *event){
     }
     return NULL;
 }
-
+void rmDir(int wd){
+    int i;
+    for(i = 0; i < currDirs; i++){
+        if(directories[i]->wd == wd){
+            free(directories[i]);
+            directories[i] = NULL;
+            currDirs--;
+            return;
+        }
+    }
+}
 int addDirNotify(const char *path){
-    int mask = IN_CREATE | IN_DELETE;
+    int mask = IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO;
     int wd = inotify_add_watch(fd, path, mask);
     if(wd == -1){
         errorf("Error adding %s to inotify\n", path);
         return -1;
+    }
+    if(currDirs/10 > (currDirs-1)/10){
+        directories = realloc(directories, currDirs+10);
     }
     directories[currDirs] = malloc(sizeof(struct directory));
     directories[currDirs]->wd = wd;
@@ -87,12 +108,23 @@ void manageEvent(const struct inotify_event *event){
     else if(event->mask & IN_DELETE){
         char *path = getPwd(event);
         infof("%s deleted\n", path);
+        if(event->mask & IN_ISDIR) rmDir(event->wd);
+        free(path);
     }
     else if(event->mask & IN_MOVED_FROM){
-
+        char *path = getPwd(event);
+        infof("%s moved FROM directory %s\n", event->name, getPwdNoFile(event));
+        if(event->mask & IN_ISDIR) rmDir(event->wd);
+        free(path);
     }
     else if(event->mask & IN_MOVED_TO){
-
+        char *path = getPwd(event);
+        int isDir = isDirectory(path);
+        infof(" %s moved TO directory %s\n", event->name, getPwdNoFile(event));
+        if(isDir){
+            addDirNotify(path);
+        }
+        free(path);
     }
     else {
         warnf("Unknown event %x\n", event->mask);
