@@ -6,20 +6,46 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <sys/stat.h>
-
+#include <string.h>
 int fd;
+struct directory{
+    int wd;
+    char *path;
+};
+int currDirs;
+struct directory **directories;
+
+struct directory *getPwd(struct inotify_event *event){
+    int i;
+    for(i = 0; i < currDirs; i++){
+        if(directories[i]->wd == event->wd){
+            int dirLen = strlen(directories[i]->path);
+            char *path = calloc(dirLen + 1 + event->len, sizeof(char));
+            strcpy(path, directories[i]->path);
+            path[dirLen] = '/';
+            strcpy(path + dirLen + 1, event->name);
+            return path;
+        }
+    }
+    return NULL;
+}
 
 int addDirNotify(const char *path){
     int mask = IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO;
-    int err = inotify_add_watch(fd, path, mask);
-    if(err == -1){
+    int wd = inotify_add_watch(fd, path, mask);
+    if(wd == -1){
         errorf("Error adding %s to inotify\n", path);
         return -1;
     }
+    directories[currDirs] = malloc(sizeof(struct directory));
+    directories[currDirs]->wd = wd;
+    directories[currDirs]->path = calloc(strlen(path), sizeof(char));
+    strcpy(directories[currDirs], path);
+    currDirs++;
     return 0;
 }
 
-int isDir(char *path){
+int isDirectory(char *path){
     struct stat buf;
     stat(path, &buf);
     switch (buf.st_mode & S_IFMT) {
@@ -51,7 +77,29 @@ static int treeEntry(const char *fpath, const struct stat *sb, int typeflag, str
 }
 
 void manageEvent(const struct inotify_event *event){
+    if(event->mask == IN_CREATE){
+        char *path = getPwd(event);
+        int isDir = isDirectory(path);
+        infof(" created.\n");
+        if(isDir){
+            addDirNotify(path);
+        }
+        free(path);
+    }
+    else if(event->mask == IN_DELETE){
+        char *path = getPwd(event);
+        isDirectory(path);
+        infof(" deleted.\n");
+    }
+    else if(event->mask == IN_MOVED_FROM){
 
+    }
+    else if(event->mask == IN_MOVED_TO){
+
+    }
+    else {
+        warnf("Unknown event\n");
+    }
 }
 
 int main(int argc, char *argv[]){
@@ -62,6 +110,7 @@ int main(int argc, char *argv[]){
     }
     // NFTW
     fd = inotify_init();
+    directories = calloc(10, sizeof(struct directory *));
     if (fd == -1){
         errorf("Error calling inotify_init\n");
         return -1;
