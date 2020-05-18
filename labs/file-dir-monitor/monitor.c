@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
+
 int fd;
 struct directory{
     int wd;
@@ -37,13 +38,13 @@ char *getPwd(const struct inotify_event *event){
     }
     return NULL;
 }
-void rmDir(int wd){
+void rmDir(char *path){
     int i;
     int found = -1;
     for(i = 0; i < currDirs; i++){
         if(found >= 0){
             directories[i-1] = directories [i];
-        }else if(directories[i]->wd == wd){
+        }else if(strcmp(directories[i]->path, path) == 0){
             free(directories[i]->path);
             free(directories[i]);
             directories[i] = NULL;
@@ -57,7 +58,11 @@ void rmDir(int wd){
             directories [currDirs] = NULL;
         }
         if(currDirs/10 > (currDirs-1)/10){
-            directories = realloc(directories, currDirs+10);
+            directories = realloc(directories, currDirs-10);
+        }
+        warnf("Current dirs watched: %d\n", currDirs);
+        for(i = 0; i < currDirs; i++){
+            warnf("Dir[%d](wd: %d): %s\n", i, directories[i]->wd, directories[i]->path);
         }
     }
 }
@@ -76,6 +81,11 @@ int addDirNotify(const char *path){
     directories[currDirs]->path = calloc(strlen(path), sizeof(char));
     strcpy(directories[currDirs]->path, path);
     currDirs++;
+    warnf("Current dirs watched: %d\n", currDirs);
+    int i;
+    for(i = 0; i < currDirs; i++){
+        warnf("Dir[%d](wd: %d): %s\n", i, directories[i]->wd, directories[i]->path);
+    }
     return 0;
 }
 
@@ -121,13 +131,13 @@ void manageEvent(const struct inotify_event *event){
     else if(event->mask & IN_DELETE){
         char *path = getPwd(event);
         infof("%s deleted\n", path);
-        if(event->mask & IN_ISDIR) rmDir(event->wd);
+        if(event->mask & IN_ISDIR) rmDir(path);
         free(path);
     }
     else if(event->mask & IN_MOVED_FROM){
         char *path = getPwd(event);
         infof("%s moved FROM directory %s\n", event->name, getPwdNoFile(event));
-        if(event->mask & IN_ISDIR) rmDir(event->wd);
+        if(event->mask & IN_ISDIR) rmDir(path);
         free(path);
     }
     else if(event->mask & IN_MOVED_TO){
@@ -138,9 +148,6 @@ void manageEvent(const struct inotify_event *event){
             addDirNotify(path);
         }
         free(path);
-    }
-    else {
-        warnf("Unknown event %x\n", event->mask);
     }
 }
 
