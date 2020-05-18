@@ -57,35 +57,35 @@ void rmDir(char *path){
             directories[currDirs-1] = directories [currDirs];
             directories [currDirs] = NULL;
         }
-        if(currDirs/10 > (currDirs-1)/10){
-            directories = realloc(directories, currDirs-10);
+        if(currDirs/100 > (currDirs-1)/100){
+            directories = realloc(directories, sizeof(struct directory *) * (currDirs - 100));
         }
-        warnf("Current dirs watched: %d\n", currDirs);
-        for(i = 0; i < currDirs; i++){
-            warnf("Dir[%d](wd: %d): %s\n", i, directories[i]->wd, directories[i]->path);
-        }
+        // warnf("Current dirs watched: %d\n", currDirs);
+        // for(i = 0; i < currDirs; i++){
+        //     warnf("Dir[%d](wd: %d): %s\n", i, directories[i]->wd, directories[i]->path);
+        // }
     }
 }
 int addDirNotify(const char *path){
-    int mask = IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO;
+    int mask = IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO | IN_DELETE_SELF;
     int wd = inotify_add_watch(fd, path, mask);
     if(wd == -1){
         errorf("Error adding %s to inotify\n", path);
         return -1;
     }
-    if(currDirs/10 > (currDirs-1)/10){
-        directories = realloc(directories, currDirs+10);
+    if(currDirs/100 > (currDirs-1)/100){
+        directories = realloc(directories, sizeof(struct directory *) * (currDirs + 100));
     }
     directories[currDirs] = malloc(sizeof(struct directory));
     directories[currDirs]->wd = wd;
-    directories[currDirs]->path = calloc(strlen(path), sizeof(char));
+    directories[currDirs]->path = malloc((1 + strlen(path)) * sizeof(char));
     strcpy(directories[currDirs]->path, path);
     currDirs++;
-    warnf("Current dirs watched: %d\n", currDirs);
-    int i;
-    for(i = 0; i < currDirs; i++){
-        warnf("Dir[%d](wd: %d): %s\n", i, directories[i]->wd, directories[i]->path);
-    }
+    // warnf("Current dirs watched: %d\n", currDirs);
+    // int i;
+    // for(i = 0; i < currDirs; i++){
+    //     warnf("Dir[%d](wd: %d): %s\n", i, directories[i]->wd, directories[i]->path);
+    // }
     return 0;
 }
 
@@ -149,6 +149,7 @@ void manageEvent(const struct inotify_event *event){
         }
         free(path);
     }
+    infof("0x%08x\n", event->mask);  // gives 0x00000007
 }
 
 int main(int argc, char *argv[]){
@@ -159,7 +160,7 @@ int main(int argc, char *argv[]){
     }
     // NFTW
     fd = inotify_init();
-    directories = calloc(10, sizeof(struct directory *));
+    directories = calloc(100, sizeof(struct directory *));
     if (fd == -1){
         errorf("Error calling inotify_init\n");
         return -1;
@@ -170,6 +171,11 @@ int main(int argc, char *argv[]){
     if(err){
         errorf("Error calling nftw\n");
     }
+    warnf("Current dirs watched: %d\n", currDirs);
+    // int i;
+    // for(i = 0; i < currDirs; i++){
+    //     warnf("Dir[%d](wd: %d): %s\n", i, directories[i]->wd, directories[i]->path);
+    // }
     warnf("Configuration is done, listening to changes:\n");
     // Listening to changes
     int n = 0;
