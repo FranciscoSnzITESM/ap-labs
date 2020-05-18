@@ -39,12 +39,25 @@ char *getPwd(const struct inotify_event *event){
 }
 void rmDir(int wd){
     int i;
+    int found = -1;
     for(i = 0; i < currDirs; i++){
-        if(directories[i]->wd == wd){
+        if(found >= 0){
+            directories[i-1] = directories [i];
+        }else if(directories[i]->wd == wd){
+            free(directories[i]->path);
             free(directories[i]);
             directories[i] = NULL;
+            found = i;
             currDirs--;
-            return;
+        }
+    }
+    if(found >= 0){
+        if(found < currDirs){
+            directories[currDirs-1] = directories [currDirs];
+            directories [currDirs] = NULL;
+        }
+        if(currDirs/10 > (currDirs-1)/10){
+            directories = realloc(directories, currDirs+10);
         }
     }
 }
@@ -83,7 +96,7 @@ int isDirectory(char *path){
 static int treeEntry(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf) {
     switch (typeflag) {
     case FTW_D: // Directory
-        infof("Directory: %s\n", fpath);
+        // infof("Directory: %s\n", fpath);
         return addDirNotify(fpath);
     case FTW_DNR: // Directory that can't be read
         errorf("This program doesn't have permissions to read the directory %s\n", fpath);
