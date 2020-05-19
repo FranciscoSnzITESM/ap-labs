@@ -1,12 +1,12 @@
 Solution
 ========
 Exercise 9.4 pipeline:
-- go run pipeline.go [number of goroutines]
+- go run pipeline.go [number of goroutines]\
 The program handled even a million goroutines, when you run the program it will print the time it took for the value
 to transit the pipeline.
 
 Exercise 9.5 pingpong:
-- go run pingpong.go
+- go run pingpong.go\
 The program passes a message back and foward between the goroutines, every second it will print how many communications per 
 second the program sustained until the program is terminated.
 
