@@ -1,3 +1,15 @@
+Solution
+========
+Exercise 9.4 pipeline:
+- go run pipeline.go [number of goroutines]
+The program handled even a million goroutines, when you run the program it will print the time it took for the value
+to transit the pipeline.
+
+Exercise 9.5 pingpong:
+- go run pingpong.go
+The program passes a message back and foward between the goroutines, every second it will print how many communications per 
+second the program sustained until the program is terminated.
+
 Lab - Goroutines vs OS Threads
 ==============================
 Read section 9.8 from The [Go Programming Language](https://www.amazon.com/dp/0134190440/ref=cm_sw_em_r_mt_dp_U_Uz0RDbHAH27PH) book.
